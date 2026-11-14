@@ -1,0 +1,40 @@
+// Original trivia boards (written for this project). Clue values are 200..1000 by index.
+const c = (name, rows) => ({ name, clues: rows });
+module.exports = [
+  {
+    id: 'pop', title: 'Pop Culture Party', blurb: 'Duos, snacks, animals, games & more. Great for any crowd.',
+    categories: [
+      c('Famous Duos', [['Batman’s young sidekick', 'Who is Robin?'], ['Mario’s taller brother in green', 'Who is Luigi?'], ['Sherlock Holmes’s friend and chronicler', 'Who is Dr. Watson?'], ['This cartoon cat-and-mouse pair never stop chasing each other', 'Who are Tom and Jerry?'], ['This folk-rock duo sang “The Sound of Silence”', 'Who are Simon & Garfunkel?']]),
+      c('Food Fight', [['Italian dish of flat dough, sauce and cheese', 'What is pizza?'], ['Japanese dish of vinegared rice, often topped with raw fish', 'What is sushi?'], ['Guacamole is made mainly from this green fruit', 'What is an avocado?'], ['Priciest spice by weight, harvested from crocus flowers', 'What is saffron?'], ['Spicy fermented cabbage that’s a staple of Korean meals', 'What is kimchi?']]),
+      c('Animal Kingdom', [['Fastest land animal', 'What is a cheetah?'], ['The only mammal capable of true flight', 'What is a bat?'], ['A group of crows is called this', 'What is a murder?'], ['An octopus has this many hearts', 'What is three?'], ['This sleepy Australian marsupial has fingerprints almost identical to humans’', 'What is a koala?']]),
+      c('Around the Globe', [['This river flows through Cairo', 'What is the Nile?'], ['World’s smallest country by area', 'What is Vatican City?'], ['Australia’s capital — not Sydney!', 'What is Canberra?'], ['Highest navigable lake in the world, shared by Peru and Bolivia', 'What is Lake Titicaca?'], ['Counting overseas territories, this European country spans the most time zones', 'What is France?']]),
+      c('Science Stuff', [['The “Red Planet”', 'What is Mars?'], ['Plants absorb this gas from the air for photosynthesis', 'What is carbon dioxide?'], ['The hardest natural substance', 'What is diamond?'], ['Chemical symbol for gold', 'What is Au?'], ['Adults have this many bones', 'What is 206?']]),
+      c('Games & Toys', [['Danish plastic bricks you step on in the dark', 'What is LEGO?'], ['In Monopoly, you collect $200 when you pass this square', 'What is Go?'], ['The most powerful chess piece', 'What is the queen?'], ['Best-selling video game of all time: a block-building sandbox', 'What is Minecraft?'], ['A standard Rubik’s Cube has this many colored squares in total', 'What is 54?']]),
+    ],
+    final: { category: 'World Capitals', clue: 'This city on the Danube, formed by joining two towns on opposite banks, is Hungary’s capital', answer: 'What is Budapest?' },
+  },
+  {
+    id: 'brains', title: 'Brains & Bragging Rights', blurb: 'History, movies, music, sports, inventions and words.',
+    categories: [
+      c('History’s Greatest Hits', [['Ship that sank in 1912 on its maiden voyage', 'What is the Titanic?'], ['Only ancient wonder still standing: the Great Pyramid at this Egyptian site', 'What is Giza?'], ['This wall dividing a German city came down in 1989', 'What is the Berlin Wall?'], ['Machu Picchu was built by this empire', 'What is the Inca?'], ['Egyptian queen who allied with Julius Caesar, then Mark Antony', 'Who is Cleopatra?']]),
+      c('Movies & Animation', [['Cowboy toy who leads the gang in Pixar’s Toy Story', 'Who is Woody?'], ['Snow-powered sisters star in this film with the song “Let It Go”', 'What is Frozen?'], ['A clownfish dad crosses the ocean to find his son in this film', 'What is Finding Nemo?'], ['He directed both Jaws and E.T.', 'Who is Steven Spielberg?'], ['In this Pixar film, a rat who loves cooking teams up with a young chef in Paris', 'What is Ratatouille?']]),
+      c('Music Makers', [['This instrument has 88 keys', 'What is a piano?'], ['Italian musical term meaning “loud”', 'What is forte?'], ['John, Paul, George and Ringo', 'Who are the Beatles?'], ['One-named “Queen of Pop” of “Like a Prayer”', 'Who is Madonna?'], ['Though he went deaf, he composed nine symphonies, ending with “Ode to Joy”', 'Who is Beethoven?']]),
+      c('Sports Time', [['Sport played with a shuttlecock', 'What is badminton?'], ['A basketball team has this many players on court', 'What is five?'], ['The Grand Slam tennis tournament held in Melbourne', 'What is the Australian Open?'], ['Host country of the 2016 Summer Olympics', 'What is Brazil?'], ['In golf, one stroke under par on a hole', 'What is a birdie?']]),
+      c('Inventions', [['Alexander Graham Bell is credited with this device', 'What is the telephone?'], ['The Wright brothers flew the first successful one of these', 'What is an airplane?'], ['Gutenberg’s machine that spread books across Europe', 'What is the printing press?'], ['Tim Berners-Lee invented this in 1989', 'What is the World Wide Web?'], ['A Swiss engineer copied burrs sticking to his dog to invent this fastener', 'What is Velcro?']]),
+      c('Words & Language', [['A word with the opposite meaning, like “hot” and “cold”', 'What is an antonym?'], ['Most spoken native language in the world', 'What is Mandarin Chinese?'], ['“Bonjour” means hello in this language', 'What is French?'], ['A word spelled the same backward, like “level”', 'What is a palindrome?'], ['A word that imitates a sound, like “buzz” or “sizzle”', 'What is onomatopoeia?']]),
+    ],
+    final: { category: 'Famous Scientists', clue: 'This Polish-born scientist won Nobel Prizes in both Physics and Chemistry', answer: 'Who is Marie Curie?' },
+  },
+  {
+    id: 'family', title: 'Family Game Night', blurb: 'Superheroes, Disney, snacks, holidays and nature. Easy, fun, loud.',
+    categories: [
+      c('Super Heroes', [['Spider-Man’s secret identity', 'Who is Peter Parker?'], ['Hammer-wielding Avenger from Asgard', 'Who is Thor?'], ['T’Challa rules the nation of Wakanda as this hero', 'Who is Black Panther?'], ['Batman protects this fictional city', 'What is Gotham City?'], ['Superman’s home planet', 'What is Krypton?']]),
+      c('Animated Classics', [['The mouse that started the Disney empire', 'Who is Mickey Mouse?'], ['Princess who left behind a glass slipper', 'Who is Cinderella?'], ['Lion cub who becomes king in The Lion King', 'Who is Simba?'], ['Disney film with a magic lamp and a wish-granting Genie', 'What is Aladdin?'], ['Disney’s first full-length animated feature (1937)', 'What is Snow White and the Seven Dwarfs?']]),
+      c('Around the Kitchen', [['This appliance keeps your food cold', 'What is a refrigerator?'], ['Appliance that turns bread golden brown', 'What is a toaster?'], ['Water boils at this many degrees Celsius', 'What is 100?'], ['Round-bottomed pan used for stir-frying', 'What is a wok?'], ['Water freezes at this many degrees Fahrenheit', 'What is 32?']]),
+      c('Snacks & Sweets', [['Black-and-white sandwich cookie with creme filling', 'What are Oreos?'], ['Pennsylvania town famous for its chocolate and Kisses', 'What is Hershey?'], ['Ice cream flavor that comes from the pods of an orchid', 'What is vanilla?'], ['Popcorn pops when this liquid inside the kernel turns to steam', 'What is water?'], ['This small European country eats the most chocolate per person', 'What is Switzerland?']]),
+      c('Holiday Hooray', [['You go trick-or-treating on this holiday', 'What is Halloween?'], ['Christmas Day’s date', 'What is December 25?'], ['Hindu festival of lights', 'What is Diwali?'], ['The Chinese zodiac has this many animals', 'What is twelve?'], ['If this animal sees its shadow on February 2, we get six more weeks of winter', 'What is a groundhog?']]),
+      c('Nature Calls', [['Giant California trees that are among the tallest in the world', 'What are redwoods?'], ['Earth’s largest ocean', 'What is the Pacific?'], ['A rainbow has this many colors', 'What is seven?'], ['Tallest mountain above sea level', 'What is Mount Everest?'], ['The deepest ocean trench on Earth', 'What is the Mariana Trench?']]),
+    ],
+    final: { category: 'Birds', clue: 'This large flightless Australian bird is the second-tallest bird in the world', answer: 'What is an emu?' },
+  },
+];

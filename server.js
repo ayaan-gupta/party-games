@@ -7,7 +7,15 @@ const crypto = require('crypto');
 const app = express();
 app.use(express.static(__dirname + '/public'));
 const server = http.createServer(app);
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ noServer: true });
+const quiz = require('./jeopardy/game');
+const quizWss = new WebSocketServer({ noServer: true });
+quiz.attach(quizWss);
+app.get('/api/boards', (_req, res) => res.json(quiz.boards));
+server.on('upgrade', (req, socket, head) => {
+  const target = req.url && req.url.startsWith('/quiz') ? quizWss : wss;
+  target.handleUpgrade(req, socket, head, (ws) => target.emit('connection', ws, req));
+});
 
 const games = new Map();
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
