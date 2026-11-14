@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Skedaddle</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#0f1420;--panel:#182033;--ink:#eef2ff;--mute:#8f9bb8;--hunter:#ef476f;--runner:#06d6a0;--accent:#ffd166;--line:#26314d}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,sans-serif}
+button,input,select{font:inherit}
+.screen{display:none;min-height:100%;padding:20px 16px calc(24px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto}
+.screen.on{display:block}
+h1{font-size:2.2rem;margin:.6em 0 .1em;letter-spacing:-.02em}
+h2{margin:.2em 0 .6em}
+p.sub{color:var(--mute);margin:0 0 1.4em}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+label{display:block;color:var(--mute);font-size:.85rem;margin:10px 0 4px}
+input,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0c111c;color:var(--ink)}
+input[type=checkbox]{width:auto}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.btn{width:100%;padding:14px;border:0;border-radius:12px;background:var(--accent);color:#1a1a1a;font-weight:700;cursor:pointer;margin-top:10px}
+.btn.alt{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+.btn.red{background:var(--hunter);color:#fff}.btn.green{background:var(--runner);color:#06281f}
+.btn:disabled{opacity:.4}
+.code{font-size:2.4rem;letter-spacing:.25em;font-weight:800;text-align:center;color:var(--accent)}
+.pl{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.dot{width:12px;height:12px;border-radius:50%}
+.pl .n{flex:1}.pl select{width:auto;padding:6px}
+.tag{font-size:.75rem;padding:2px 8px;border-radius:99px;background:var(--line)}
+.tag.hunter{background:var(--hunter)}.tag.runner{background:var(--runner);color:#06281f}
+#map,#lobbymap{height:260px;border-radius:12px;border:1px solid var(--line)}
+#game{padding:0;max-width:none;position:relative;height:100%}
+#gmap{position:absolute;inset:0}
+.hud{position:absolute;z-index:1000;left:8px;right:8px;top:8px;display:flex;gap:8px;pointer-events:none}
+.hud>div{pointer-events:auto;background:rgba(15,20,32,.9);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+.hud .big{font-size:1.5rem;font-weight:800;font-variant-numeric:tabular-nums}
+.bottom{position:absolute;z-index:1000;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
+.bottom .box{background:rgba(15,20,32,.92);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.warn{background:#7a1f33!important;border-color:var(--hunter)!important;font-weight:700}
+#toast{position:fixed;z-index:3000;top:70px;left:50%;transform:translateX(-50%);background:#fff;color:#111;padding:10px 16px;border-radius:99px;font-weight:600;display:none;max-width:90%}
+#log{max-height:70px;overflow:auto;font-size:.85rem;color:var(--mute)}
+.pin{width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.4)}
+.pin.me{animation:pulse 1.5s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px rgba(255,255,255,.2)}}
+.small{font-size:.8rem;color:var(--mute)}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<section id="home" class="screen on">
+  <h1>Skedaddle</h1>
+  <p class="sub">Real-world hide &amp; seek. Hunters chase, runners hide, your phone is the radar.</p>
+  <div class="card">
+    <label>Your name</label><input id="name" maxlength="16" placeholder="Nickname" autocomplete="off">
+    <button class="btn" id="goHost">Host a game</button>
+    <label style="margin-top:18px">Join with a code</label>
+    <input id="joinCode" maxlength="6" placeholder="ABC123" style="text-transform:uppercase;letter-spacing:.2em;text-align:center" autocomplete="off">
+    <button class="btn alt" id="goJoin">Join game</button>
+  </div>
+  <p class="small">Location is shared only during a round and only with players in your game. Stay in safe areas, watch for traffic, and respect private property. This app can't call emergency services.</p>
+  <p class="small"><label style="display:flex;gap:8px;align-items:center;margin:0"><input type="checkbox" id="sim"> Test mode (tap the map to move instead of using GPS)</label></p>
+</section>
+
+<!-- HOST SETUP -->
+<section id="setup" class="screen">
+  <h2>Game settings</h2>
+  <div class="card">
+    <label>Mode</label>
+    <select id="mode"><option value="classic">Classic — tagged runners are out</option><option value="infection">Infection — tagged runners become hunters</option></select>
+    <div class="row">
+      <div><label>Round (min)</label><input id="roundMin" type="number" min="1" max="120" value="15"></div>
+      <div><label>Head start (min)</label><input id="headStartMin" type="number" min="0" max="30" value="2"></div>
+    </div>
+    <div class="row">
+      <div><label>Ping every (min, 0 = off)</label><input id="pingMin" type="number" min="0" max="30" value="3"></div>
+      <div><label>Zone radius (m)</label><input id="radius" type="number" min="30" max="20000" value="300"></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="shrink" checked> Zone shrinks as the clock runs down</label>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="zoneOn" checked> Use a play zone</label>
+  </div>
+  <div class="card"><label style="margin-top:0">Tap the map to place the zone centre</label><div id="map"></div></div>
+  <button class="btn" id="create">Create game</button>
+  <button class="btn alt" data-back>Back</button>
+</section>
+
+<!-- LOBBY -->
+<section id="lobby" class="screen">
+  <div class="card"><div class="small" style="text-align:center">Game code — share it, or the link</div>
+    <div class="code" id="lcode"></div>
+    <button class="btn alt" id="share">Copy invite link</button></div>
+  <div class="card"><b>Players</b><div id="plist"></div></div>
+  <div class="card" id="hostBox"><div class="small" id="sumry"></div>
+    <div id="lobbymap" style="margin-top:8px"></div>
+    <div class="row">
+      <button class="btn alt" id="randTeams">Randomise teams</button>
+      <button class="btn alt" id="editSet">Edit settings</button>
+    </div>
+    <button class="btn green" id="start">Start game</button></div>
+  <p class="small" id="waitMsg"></p>
+</section>
+
+<!-- GAME -->
+<section id="game" class="screen">
+  <div id="gmap"></div>
+  <div class="hud">
+    <div style="flex:1"><div class="small" id="phaseLbl"></div><div class="big" id="clock">--:--</div></div>
+    <div><div class="small">You are</div><div id="role" style="font-weight:800"></div></div>
+  </div>
+  <div class="bottom">
+    <div class="box warn" id="zoneWarn" style="display:none"></div>
+    <div class="box" id="tagBox" style="display:none"></div>
+    <div class="box" id="actions"></div>
+    <div class="box" id="log"></div>
+  </div>
+</section>
+
+<!-- RESULT -->
+<section id="result" class="screen">
+  <h1 id="rTitle"></h1><p class="sub" id="rWhy"></p>
+  <div class="card"><b>Players</b><div id="rlist"></div></div>
+  <button class="btn" onclick="location.href='/'">Play again</button>
+</section>
+
+<div id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const show = (id) => { document.querySelectorAll('.screen').forEach((e) => e.classList.toggle('on', e.id === id)); window.scrollTo(0, 0); };
+const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} } };
+$('#name').value = store.get('sk_name') || '';
+const params = new URLSearchParams(location.search);
+if (params.get('join')) $('#joinCode').value = params.get('join');
+
+let ws, S = null, myPos = null, watchId = null, token = store.get('sk_token') || '';
+let curScreen = 'home', pendingCreate = null;
+const SIM = () => $('#sim').checked;
+const TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const ATTR = '&copy; OpenStreetMap &copy; CARTO';
+
+function toast(t) { const el = $('#toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', 3200); }
+function vib() { try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch {} }
+function connect(onopen) {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}`);
+  ws.onopen = onopen;
+  ws.onmessage = (e) => handle(JSON.parse(e.data));
+  ws.onclose = () => { if (S && S.phase !== 'ended') { toast('Reconnecting…'); setTimeout(() => rejoin(), 1500); } };
+}
+const send = (o) => ws && ws.readyState === 1 && ws.send(JSON.stringify(o));
+function rejoin() { if (!S) return; connect(() => send({ type: 'join', code: S.code, token })); }
+const needName = () => { const n = $('#name').value.trim(); if (!n) { toast('Enter a nickname first'); return null; } store.set('sk_name', n); return n; };
+
+// ---------- GPS ----------
+function startGPS() {
+  if (SIM()) return;
+  if (!navigator.geolocation) return toast('Geolocation not supported');
+  if (watchId != null) return;
+  watchId = navigator.geolocation.watchPosition((p) => {
+    myPos = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy };
+    send({ type: 'pos', ...myPos });
+    updateMe();
+  }, (err) => toast('Location error: ' + err.message), { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
+}
+function setSimPos(latlng) { myPos = { lat: latlng.lat, lng: latlng.lng, acc: 5 }; send({ type: 'pos', ...myPos }); updateMe(); }
+
+// ---------- Home ----------
+$('#goJoin').onclick = () => {
+  const n = needName(); if (!n) return;
+  const code = $('#joinCode').value.trim().toUpperCase(); if (code.length !== 6) return toast('Codes are 6 characters');
+  connect(() => send({ type: 'join', code, name: n, token: store.get('sk_code') === code ? token : '' }));
+};
+$('#goHost').onclick = () => { if (!needName()) return; curScreen = 'setup'; show('setup'); initSetupMap(); };
+document.querySelectorAll('[data-back]').forEach((b) => b.onclick = () => { curScreen = S ? 'lobby' : 'home'; show(curScreen); });
+
+// ---------- Setup map ----------
+let smap, zoneCircle, zoneCenter = null;
+function initSetupMap() {
+  if (!smap) {
+    smap = L.map('map').setView([37.7749, -122.4194], 15);
+    L.tileLayer(TILE, { attribution: ATTR, maxZoom: 19 }).addTo(smap);
+    smap.on('click', (e) => { zoneCenter = e.latlng; drawZone(); });
+    navigator.geolocation && navigator.geolocation.getCurrentPosition((p) => {
+      smap.setView([p.coords.latitude, p.coords.longitude], 16);
+      zoneCenter = L.latLng(p.coords.latitude, p.coords.longitude); drawZone();
+    }, () => {}, { timeout: 8000 });
+  }
+  setTimeout(() => smap.invalidateSize(), 50);
+}
+function drawZone() {
+  if (zoneCircle) smap.removeLayer(zoneCircle);
+  if (!zoneCenter || !$('#zoneOn').checked) return;
+  zoneCircle = L.circle(zoneCenter, { radius: +$('#radius').value || 300, color: '#ffd166', fillOpacity: .08 }).addTo(smap);
+}
+$('#radius').oninput = $('#zoneOn').onchange = drawZone;
+const readSettings = () => ({
+  mode: $('#mode').value, roundMin: +$('#roundMin').value, headStartMin: +$('#headStartMin').value,
+  pingMin: +$('#pingMin').value, shrink: $('#shrink').checked,
+  zone: $('#zoneOn').checked && zoneCenter ? { lat: zoneCenter.lat, lng: zoneCenter.lng, radius: +$('#radius').value || 300 } : null,
+});
+$('#create').onclick = () => {
+  if ($('#zoneOn').checked && !zoneCenter) return toast('Tap the map to place the zone');
+  const settings = readSettings(), name = $('#name').value.trim();
+  if (S && ws && ws.readyState === 1) { send({ type: 'settings', settings }); send({ type: 'zone', zone: settings.zone }); curScreen = 'lobby'; show('lobby'); return; }
+  connect(() => send({ type: 'create', name, settings }));
+};
+$('#editSet').onclick = () => { curScreen = 'setup'; show('setup'); initSetupMap(); };
+
+// ---------- Messages ----------
+function handle(m) {
+  if (m.type === 'joined') { token = m.token; store.set('sk_token', token); store.set('sk_code', m.code); startGPS(); }
+  else if (m.type === 'error') toast(m.text);
+  else if (m.type === 'toast') toast(m.text);
+  else if (m.type === 'vibrate') vib();
+  else if (m.type === 'state') { m.skew = m.now - Date.now(); S = m; render(); }
+  else if (m.type === 'event') { /* included in next state */ }
+}
+
+function fmt(ms) { ms = Math.max(0, ms); const s = Math.ceil(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }
+const me = () => S.players.find((p) => p.id === S.you);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function render() {
+  const target = S.phase === 'lobby' ? 'lobby' : S.phase === 'ended' ? 'result' : 'game';
+  if (curScreen === 'setup' && S.phase === 'lobby') { /* host is editing settings */ }
+  else if (curScreen !== target) { curScreen = target; show(target); if (target === 'game') initGameMap(); }
+  if (target === 'lobby') renderLobby(); else if (target === 'game') renderGame(); else renderResult();
+}
+
+// ---------- Lobby ----------
+let lmap, lzone, lmarks = [];
+function renderLobby() {
+  $('#lcode').textContent = S.code;
+  const list = $('#plist'); list.innerHTML = '';
+  for (const p of S.players) {
+    const d = document.createElement('div'); d.className = 'pl';
+    const canEdit = S.host || p.id === S.you;
+    d.innerHTML = `<span class="dot" style="background:${p.color}"></span><span class="n">${esc(p.name)}${p.id === S.you ? ' (you)' : ''}${p.connected ? '' : ' ⚠︎'}</span>` +
+      (canEdit ? `<select data-id="${p.id}"><option value="runner">Runner</option><option value="hunter">Hunter</option></select>` : `<span class="tag ${p.team}">${p.team}</span>`);
+    list.appendChild(d);
+    const sel = d.querySelector('select'); if (sel) { sel.value = p.team; sel.onchange = () => send({ type: 'team', id: p.id, team: sel.value }); }
+  }
+  const s = S.settings;
+  $('#hostBox').style.display = S.host ? '' : 'none';
+  $('#waitMsg').textContent = S.host ? '' : 'Waiting for the host to start…  You can pick your own team above.';
+  $('#sumry').textContent = `${s.mode === 'infection' ? 'Infection' : 'Classic'} · ${s.roundMin} min round · ${s.headStartMin} min head start · pings ${s.pingMin ? 'every ' + s.pingMin + ' min' : 'off'} · zone ${s.zone ? Math.round(s.zone.radius) + ' m' + (s.shrink ? ' (shrinks)' : '') : 'off'}`;
+  if (!lmap) { lmap = L.map('lobbymap', { zoomControl: false }); L.tileLayer(TILE, { attribution: ATTR, maxZoom: 19 }).addTo(lmap); }
+  if (lzone) lmap.removeLayer(lzone);
+  if (s.zone) { lzone = L.circle([s.zone.lat, s.zone.lng], { radius: s.zone.radius, color: '#ffd166', fillOpacity: .08 }).addTo(lmap); lmap.fitBounds(lzone.getBounds()); }
+  else lmap.setView(myPos ? [myPos.lat, myPos.lng] : [37.77, -122.42], 15);
+  setTimeout(() => lmap.invalidateSize(), 50);
+}
+$('#start').onclick = () => send({ type: 'start' });
+$('#randTeams').onclick = () => {
+  const ids = S.players.map((p) => p.id).sort(() => Math.random() - .5);
+  const h = Math.max(1, Math.round(ids.length / 4));
+  ids.forEach((id, i) => send({ type: 'team', id, team: i < h ? 'hunter' : 'runner' }));
+};
+$('#share').onclick = async () => {
+  const url = `${location.origin}/?join=${S.code}`;
+  try { if (navigator.share) await navigator.share({ title: 'Skedaddle', text: 'Join my hide & seek game!', url }); else { await navigator.clipboard.writeText(url); toast('Link copied'); } } catch { toast(url); }
+};
+
+// ---------- Game ----------
+let gmap, gzone, myMarker, others = {}, pingMarks = [], fitted = false;
+function pinIcon(color, me) { return L.divIcon({ className: '', html: `<div class="pin ${me ? 'me' : ''}" style="background:${color}"></div>`, iconSize: [18, 18], iconAnchor: [9, 9] }); }
+function initGameMap() {
+  if (gmap) { setTimeout(() => gmap.invalidateSize(), 50); return; }
+  gmap = L.map('gmap', { zoomControl: false }).setView([S.zone ? S.zone.lat : 37.77, S.zone ? S.zone.lng : -122.42], 16);
+  L.tileLayer(TILE, { attribution: ATTR, maxZoom: 19 }).addTo(gmap);
+  gmap.on('click', (e) => { if (SIM()) setSimPos(e.latlng); });
+}
+function updateMe() {
+  if (!gmap || !myPos) return;
+  const m = me(); const color = m ? m.color : '#fff';
+  if (!myMarker) myMarker = L.marker([myPos.lat, myPos.lng], { icon: pinIcon(color, true), zIndexOffset: 1000 }).addTo(gmap);
+  else myMarker.setLatLng([myPos.lat, myPos.lng]);
+}
+function renderGame() {
+  initGameMap();
+  const m = me();
+  $('#role').innerHTML = `<span class="tag ${m.team}">${m.team.toUpperCase()}${m.status === 'out' ? ' · OUT' : ''}</span>`;
+  const head = S.phase === 'headstart';
+  $('#phaseLbl').textContent = head ? (m.team === 'hunter' ? 'Hunters released in' : 'Head start — hide!') : 'Time left';
+  tickClock();
+  if (S.zone) {
+    if (!gzone) gzone = L.circle([S.zone.lat, S.zone.lng], { radius: S.zone.radius, color: '#ffd166', weight: 2, fillOpacity: .04, interval: 0 }).addTo(gmap);
+    gzone.setLatLng([S.zone.lat, S.zone.lng]); gzone.setRadius(S.zone.radius);
+  }
+  if (!fitted && gzone) { gmap.fitBounds(gzone.getBounds()); fitted = true; }
+  updateMe();
+  // others
+  const seen = new Set();
+  for (const v of S.visible) {
+    seen.add(v.id);
+    const color = v.status === 'out' ? '#666' : (v.team === 'hunter' ? '#ef476f' : v.color);
+    if (!others[v.id]) others[v.id] = L.marker([v.lat, v.lng], { icon: pinIcon(color) }).addTo(gmap).bindTooltip(v.name, { permanent: false });
+    others[v.id].setLatLng([v.lat, v.lng]).setIcon(pinIcon(color)).setTooltipContent(v.name + (v.exposed ? ' (outside zone!)' : ''));
+  }
+  for (const id in others) if (!seen.has(id)) { gmap.removeLayer(others[id]); delete others[id]; }
+  // pings
+  pingMarks.forEach((x) => gmap.removeLayer(x)); pingMarks = [];
+  for (const p of S.pings) {
+    const age = p.ageSec < 60 ? p.ageSec + 's ago' : Math.round(p.ageSec / 60) + ' min ago';
+    pingMarks.push(L.circle([p.lat, p.lng], { radius: 25, color: '#06d6a0', dashArray: '4', fillOpacity: .15 }).addTo(gmap).bindTooltip(`${p.name} · ${age}`, { permanent: true, direction: 'top' }));
+  }
+  // zone warning
+  const w = $('#zoneWarn');
+  if (m.team === 'runner' && m.status === 'active' && S.outFor > 0) {
+    w.style.display = ''; const left = S.outLimits.elim - S.outFor;
+    w.textContent = S.outFor >= S.outLimits.visible ? `Hunters can SEE you! Return to the zone — out in ${left}s` : `Outside the zone! Exposed in ${S.outLimits.visible - S.outFor}s · out in ${left}s`;
+  } else w.style.display = 'none';
+  // pending tag confirmation
+  const tb = $('#tagBox');
+  if (S.pendingTag) {
+    tb.style.display = '';
+    tb.innerHTML = `<b>${esc(S.pendingTag.byName)}</b> says they tagged you.<div class="row"><button class="btn red" id="ok">Yes, I got tagged</button><button class="btn alt" id="no">No</button></div>`;
+    $('#ok').onclick = () => send({ type: 'confirmTag', accept: true });
+    $('#no').onclick = () => send({ type: 'confirmTag', accept: false });
+  } else tb.style.display = 'none';
+  // actions
+  const a = $('#actions'); let html = '';
+  if (m.status === 'out') html = 'You\'re out — watching the rest of the round.';
+  else if (m.team === 'runner') html = S.phase === 'running' ? '<button class="btn red" id="selfTag" style="margin:0">I got tagged</button>' : '<span class="small">Teammates are shown live. Hunters can\'t see you — until a ping.</span>';
+  else html = S.phase === 'running' ? '<button class="btn" id="tagBtn" style="margin:0">I tagged someone</button>' : '<span class="small">Wait for the head start to end.</span>';
+  if (S.host) html += '<button class="btn alt" id="endBtn" style="margin-top:8px">End game</button>';
+  if (a.dataset.h !== html) { a.innerHTML = html; a.dataset.h = html; bindActions(); }
+  $('#log').innerHTML = S.events.slice().reverse().map((e) => `<div>${esc(e.text)}</div>`).join('');
+}
+function bindActions() {
+  const st = $('#selfTag'); if (st) st.onclick = () => confirm('Confirm you were tagged?') && send({ type: 'selfTag' });
+  const eb = $('#endBtn'); if (eb) eb.onclick = () => confirm('End the game for everyone?') && send({ type: 'end' });
+  const tg = $('#tagBtn'); if (tg) tg.onclick = tagFlow;
+}
+function tagFlow() {
+  const runners = S.players.filter((p) => p.team === 'runner' && p.status === 'active');
+  if (!runners.length) return;
+  const name = prompt('Who did you tag?\n' + runners.map((r, i) => `${i + 1}. ${r.name}`).join('\n') + '\n\nEnter number:');
+  const r = runners[(+name || 0) - 1]; if (r) send({ type: 'tag', id: r.id });
+}
+function tickClock() {
+  if (!S || (S.phase !== 'headstart' && S.phase !== 'running')) return;
+  const clientNow = Date.now() + (S.skew || 0);
+  const end = S.phase === 'headstart' ? S.headStartEnds : S.roundEnds;
+  $('#clock').textContent = fmt(end - clientNow);
+}
+setInterval(tickClock, 500);
+
+// ---------- Result ----------
+function renderResult() {
+  const w = S.winner || {};
+  $('#rTitle').textContent = w.team === 'hunters' ? '🔴 Hunters win!' : w.team === 'runners' ? '🟢 Runners win!' : 'Game over';
+  $('#rWhy').textContent = w.why || '';
+  $('#rlist').innerHTML = S.players.map((p) => `<div class="pl"><span class="dot" style="background:${p.color}"></span><span class="n">${esc(p.name)}</span><span class="tag ${p.team}">${p.team}</span>${p.status === 'out' ? '<span class="tag">tagged</span>' : ''}</div>`).join('');
+}
+</script>
+</body>
+</html>
